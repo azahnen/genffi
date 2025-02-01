@@ -1,4 +1,4 @@
-name: ts2xb
+name: genffi
 
 on: [push]
 
@@ -113,8 +113,8 @@ jobs:
       - run: npm ci
       - name: 🔨 Build
         run: node --run build
-      - name: 🚀 Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: node --run semantic-release
+#      - name: 🚀 Release
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+#        run: node --run semantic-release

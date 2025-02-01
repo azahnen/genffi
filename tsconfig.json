@@ -1,34 +1,14 @@
 {
-	"include": ["./src/**/*.ts"],
-	"compilerOptions": {
-		"lib": ["es2023"],
-		"module": "nodenext",
-		"target": "es2022",
-		"moduleResolution": "nodenext",
-		"esModuleInterop": true,
-		"resolveJsonModule": true,
-		"allowImportingTsExtensions": true,
-
-		"rootDir": "./src",
-		"outDir": "build",
-
-		// strict checks
-		"strict": true,
-		"noUncheckedIndexedAccess": true,
-		"allowUnusedLabels": false,
-		"allowUnreachableCode": false,
-		"exactOptionalPropertyTypes": true,
-		"noFallthroughCasesInSwitch": true,
-		"noImplicitOverride": true,
-		"noImplicitReturns": true,
-		"noPropertyAccessFromIndexSignature": true,
-		"noUnusedLocals": true,
-		"noUnusedParameters": true,
-		"forceConsistentCasingInFileNames": true,
-
-		"sourceMap": true,
-		"skipLibCheck": true,
-		"declaration": true,
-		"emitDeclarationOnly": true
-	}
+  "extends": "@tsconfig/node22/tsconfig.json",
+  "include": ["./src/**/*.ts"],
+  "compilerOptions": {
+    "rootDir": "./src" /* Specify the root folder within your source files. */,
+    "outDir": "./build" /* Specify an output folder for all emitted files. */,
+    "forceConsistentCasingInFileNames": true /* Ensure that casing is correct in imports. */,
+    "allowImportingTsExtensions": false /* Allow importing of .ts files even when they cannot be resolved. */,
+    "resolveJsonModule": true,
+    "sourceMap": true,
+    "declaration": true,
+    "emitDeclarationOnly": false
+  }
 }

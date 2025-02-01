@@ -74,6 +74,7 @@ async function build(): Promise<void> {
 		bundle: true,
 		entryPoints: [path.join(srcPath, "index.ts")],
 		outdir: buildPath,
+		banner: { js: "import { createRequire } from 'module'; import { fileURLToPath } from 'url'; const require = createRequire(import.meta.url); const __filename = fileURLToPath(import.meta.url);" },
 	});
 
 	// biome-ignore lint/suspicious/noConsole: script file
