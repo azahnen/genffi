@@ -8,6 +8,7 @@ import {
 import { Generator } from "../common/index.js";
 import { Result } from "../common/io.js";
 import { firstLetterUpperCase } from "../common/schema.js";
+import { go } from "./lang.ts";
 import { generateFile } from "./shared.js";
 
 export const generateGoApi = (
@@ -81,18 +82,16 @@ const (
 };
 
 const propToGo = (v: VarType): string => {
-  return `${firstLetterUpperCase(v.name)} ${typeToGo(v.type)}`;
+  return `${firstLetterUpperCase(v.name)} ${go.type(v.type)}`;
 };
 
 const funcToGo = (f: FunctionType): string => {
-  const params = f.params
-    .map((p) => `${p.name} ${typeToGo(p.type)}`)
-    .join(", ");
+  const params = f.params.map((p) => `${p.name} ${go.type(p.type)}`).join(", ");
 
   const ret = [];
 
   if (f.returnType !== "void") {
-    ret.push(typeToGo(f.returnType));
+    ret.push(go.type(f.returnType));
   }
   if (f.returnOptional) {
     ret.push("bool");
@@ -105,41 +104,4 @@ const funcToGo = (f: FunctionType): string => {
     ret.length > 1 ? `(${ret.join(", ")})` : ret.length == 1 ? ret[0] : "";
 
   return `${firstLetterUpperCase(f.name)}(${params}) ${ret2}`;
-};
-
-const typeToGo = (type: string): string => {
-  if (type === "boolean") {
-    return "bool";
-  }
-  if (type === "number") {
-    return "float64";
-  }
-  if (type === "bigint") {
-    return "int64";
-  }
-  if (type === "string") {
-    return "string";
-  }
-  if (type === "string[]") {
-    return "[]string";
-  }
-  if (type === "Uint8Array") {
-    return "[]byte";
-  }
-  if (type === "void") {
-    return "";
-  }
-
-  if (type.startsWith("[")) {
-    throw new Error(`Tuples not supported: ${type}`);
-  }
-  if (type[0] === type[0].toLowerCase()) {
-    throw new Error(`Unknown type: ${type}`);
-  }
-
-  if (type.endsWith("[]")) {
-    return `[]${type.substring(0, type.length - 2)}`;
-  }
-
-  return type;
 };

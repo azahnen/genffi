@@ -12,13 +12,17 @@ import {
   BridgeMapping,
   typeToLang,
   valueToLang,
-  funcToLang,
+  bridgeToLang,
   Special,
+  TypeMapper,
+  ValueMapper,
+  langMapper,
 } from "../common/lang.ts";
 import {
   firstLetterToLowerCase,
   firstLetterUpperCase,
 } from "../common/schema.ts";
+import { cgo, go } from "./lang.ts";
 import { generateFile } from "./shared.ts";
 
 export const generateCgoWrapper = (
@@ -376,30 +380,28 @@ const cgoToGoBridge: BridgeMapping = {
 	}`,
 };
 
+export const valueToGo = (type: string, value: string): string => {
+  return go.value(type, value);
+};
+
 export const funcToGo = (
   i: InterfaceType,
   f: FunctionType,
   special: Special
-): string => funcToLang(i, f, special, cgoToGoBridge);
+): string => bridgeToLang(i, f, special, cgoToGoBridge);
 
-export const valueToGo = (type: string, value: string): string => {
-  return valueToLang(
-    type,
-    value,
-    "",
-    {
-      boolean: (value) => `bool(${value} == 1)`,
-      number: (value) => `float64(${value})`,
-      bigint: (value) => `int64(${value})`,
-      string: (value) => `C.GoString(${value})`,
-      Uint8Array: (value) =>
-        `C.GoBytes(unsafe.Pointer(${value}), C.int(C.strlen(${value})))`,
-      void: (value) => value,
-    },
-    (type: string, value: string) =>
-      `GoMapSlice(${value}, int(${value}_length), Go${type})`,
-    //return `[]api.${type.substring(0, type.length - 2)}{} /*TODO*/`;
-    (type: string, value: string) => `Go${type}(&${value})`
+export const typeToCgo = (type: string): string => {
+  return cgo.type(type);
+};
+
+export const valueToCgo = (
+  type: string,
+  value: string,
+  prefix: string,
+  pointer?: boolean
+): string => {
+  return (
+    (pointer && cgo.isCustom(type) ? "&" : "") + cgo.value(type, value, prefix)
   );
 };
 
@@ -411,44 +413,5 @@ export const valueToCgoParam = (
 
 export const valueToCgoReturn = (type: string, value: string): string =>
   valueToCgo(type, value, "return ");
-
-export const valueToCgo = (
-  type: string,
-  value: string,
-  prefix: string,
-  pointer?: boolean
-): string => {
-  return valueToLang(
-    type,
-    value,
-    prefix,
-    {
-      boolean: (value) => `CBool(${value})`,
-      number: (value) => `C.double(${value})`,
-      bigint: (value) => `C.longlong(${value})`,
-      string: (value) => `C.CString(${value})`,
-      Uint8Array: (value) => `(*C.char)(C.CBytes(${value}))`,
-      void: (value) => value,
-    },
-    (type: string, value: string) => `CMapSlice(${value}, C${type})`,
-    (type: string, value: string) => `${pointer ? "&" : ""}C${type}(${value})`
-  );
-};
-
-export const typeToCgo = (type: string): string => {
-  return typeToLang(
-    type,
-    {
-      boolean: "C.short",
-      number: "C.double",
-      bigint: "C.longlong",
-      string: "*C.char",
-      Uint8Array: "*C.char",
-      void: "",
-    },
-    (type: string) => `*${type}`,
-    (type: string) => `C.${type}`
-  );
-};
 
 // return byte array: https://stackoverflow.com/questions/70531497/how-to-return-a-byte-slice-in-go-to-c

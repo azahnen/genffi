@@ -1,6 +1,6 @@
-import { TypeMapping, typeToLang } from "./lang.ts";
+import { TypeMapper, TypeMapping, typeToLang } from "./lang.ts";
 
-const cTypeMapping: TypeMapping = {
+const cTypeMapping: TypeMapper = {
   boolean: "short",
   number: "double",
   bigint: "longlong",
@@ -8,17 +8,7 @@ const cTypeMapping: TypeMapping = {
   //"string[]": "char**",
   Uint8Array: "char*",
   void: "",
+  toArray: (type: string) => `${type}*`,
 };
 
-const goTypeMapping: TypeMapping = {
-  boolean: "bool",
-  number: "float64",
-  bigint: "int64",
-  string: "string",
-  //"string[]": "[]string",
-  Uint8Array: "[]byte",
-  void: "",
-};
-
-export const typeToC = (type: string): string =>
-  typeToLang(type, cTypeMapping, (type: string) => `${type}*`);
+export const typeToC = (type: string): string => typeToLang(type, cTypeMapping);

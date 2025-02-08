@@ -12,6 +12,47 @@ export type TypeMapping = Record<Type, string>;
 
 export type ValueMapping = Record<Type, (value: string) => string>;
 
+export type TypeMapper = TypeMapping & {
+  toArray: (type: string) => string;
+  toCustom?: (type: string) => string;
+};
+
+export type ValueMapper = ValueMapping & {
+  toArray: (type: string, value: string) => string;
+  toCustom?: (type: string, value: string) => string;
+};
+export type LangMapper = {
+  type: (type: string) => string;
+  value: (
+    type: string,
+    value: string,
+    prefix?: string,
+    pointer?: boolean
+  ) => string;
+  isCustom: (type: string) => boolean;
+  bridge: (i: InterfaceType, f: FunctionType, special: Special) => string;
+};
+
+export const langMapper = (
+  typeMapper: TypeMapper,
+  valueMapper: ValueMapper,
+  bridgeMapping?: BridgeMapping
+): LangMapper => ({
+  type: (type: string) => typeToLang(type, typeMapper),
+  value: (type: string, value: string, prefix = "") =>
+    valueToLang(valueMapper, type, value, prefix),
+  isCustom: (type: string) =>
+    !Object.hasOwn(typeMapper, type) &&
+    type[0] === type[0].toUpperCase() &&
+    !type.startsWith("["),
+  bridge: (i: InterfaceType, f: FunctionType, special: Special) => {
+    if (!bridgeMapping) {
+      throw new Error("Bridge mapping not provided");
+    }
+    return bridgeToLang(i, f, special, bridgeMapping);
+  },
+});
+
 export type Special = {
   handle: string[];
   fold: string[];
@@ -68,9 +109,7 @@ export type BridgeMapping = {
 
 export const typeToLang = (
   type: string,
-  mapping: TypeMapping,
-  toArray: (type: string) => string,
-  toCustom = (type: string) => type
+  { toArray, toCustom = (type: string) => type, ...mapping }: TypeMapper
 ): string => {
   const isArray = type.endsWith("[]");
   const typ = isArray ? type.substring(0, type.length - 2) : type;
@@ -92,12 +131,14 @@ export const typeToLang = (
 };
 
 export const valueToLang = (
+  {
+    toArray,
+    toCustom = (type: string, value: string) => value,
+    ...mapping
+  }: ValueMapper,
   type: string,
   value: string,
-  prefix: string,
-  mapping: ValueMapping,
-  toArray: (type: string, value: string) => string,
-  toCustom: (type: string, value: string) => string
+  prefix: string
 ): string => {
   const isArray = type.endsWith("[]");
   const typ = isArray ? type.substring(0, type.length - 2) : type;
@@ -122,7 +163,7 @@ export const valueToLang = (
   return isArray ? toArray(typ, value) : `${prefix}${mappedType}`;
 };
 
-export const funcToLang = (
+export const bridgeToLang = (
   i: InterfaceType,
   f: FunctionType,
   special: Special,

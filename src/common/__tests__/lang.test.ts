@@ -2,31 +2,36 @@ import { describe, it, expect } from "@jest/globals";
 import {
   typeToLang,
   valueToLang,
-  funcToLang,
+  bridgeToLang,
   TypeMapping,
   ValueMapping,
   Special,
   BridgeMapping,
+  TypeMapper,
+  ValueMapper,
 } from "../lang.ts";
 import { FunctionType, InterfaceType, VarType } from "../api.ts";
 
 // Mock data for testing
-const typeMapping: TypeMapping = {
+const typeMapper: TypeMapper = {
   boolean: "bool",
   number: "int",
   bigint: "long",
   string: "str",
   Uint8Array: "byte[]",
   void: "void",
+  toArray: (type: string) => `${type}[]`,
 };
 
-const valueMapping: ValueMapping = {
+const valueMapper: ValueMapper = {
   boolean: (value) => `bool(${value})`,
   number: (value) => `int(${value})`,
   bigint: (value) => `long(${value})`,
   string: (value) => `str(${value})`,
   Uint8Array: (value) => `byte[](${value})`,
   void: () => "",
+  toArray: (type: string, value: string) => `${type}[](${value})`,
+  toCustom: (type: string, value: string) => `${type}(${value})`,
 };
 
 const special: Special = {
@@ -69,87 +74,44 @@ const bridge: BridgeMapping = {
 
 describe("typeToLang", () => {
   it("should map basic types correctly", () => {
-    expect(typeToLang("boolean", typeMapping, (type) => `${type}[]`)).toBe(
-      "bool"
-    );
-    expect(typeToLang("number", typeMapping, (type) => `${type}[]`)).toBe(
-      "int"
-    );
+    expect(typeToLang("boolean", typeMapper)).toBe("bool");
+    expect(typeToLang("number", typeMapper)).toBe("int");
   });
 
   it("should map array types correctly", () => {
-    expect(typeToLang("boolean[]", typeMapping, (type) => `${type}[]`)).toBe(
-      "bool[]"
-    );
-    expect(typeToLang("number[]", typeMapping, (type) => `${type}[]`)).toBe(
-      "int[]"
-    );
+    expect(typeToLang("boolean[]", typeMapper)).toBe("bool[]");
+    expect(typeToLang("number[]", typeMapper)).toBe("int[]");
   });
 
   it("should throw error for unknown types", () => {
-    expect(() =>
-      typeToLang("unknown", typeMapping, (type) => `${type}[]`)
-    ).toThrow("Unknown type: unknown");
+    expect(() => typeToLang("unknown", typeMapper)).toThrow(
+      "Unknown type: unknown"
+    );
   });
 });
 
 describe("valueToLang", () => {
   it("should map basic values correctly", () => {
-    expect(
-      valueToLang(
-        "boolean",
-        "true",
-        "prefix_",
-        valueMapping,
-        (type, value) => `${type}[](${value})`,
-        (type, value) => `${type}(${value})`
-      )
-    ).toBe("prefix_bool(true)");
-    expect(
-      valueToLang(
-        "number",
-        "42",
-        "prefix_",
-        valueMapping,
-        (type, value) => `${type}[](${value})`,
-        (type, value) => `${type}(${value})`
-      )
-    ).toBe("prefix_int(42)");
+    expect(valueToLang(valueMapper, "boolean", "true", "prefix_")).toBe(
+      "prefix_bool(true)"
+    );
+    expect(valueToLang(valueMapper, "number", "42", "prefix_")).toBe(
+      "prefix_int(42)"
+    );
   });
 
   it("should map array values correctly", () => {
-    expect(
-      valueToLang(
-        "boolean[]",
-        "true",
-        "prefix_",
-        valueMapping,
-        (type, value) => `${type}[](${value})`,
-        (type, value) => `${type}(${value})`
-      )
-    ).toBe("prefix_bool(true)");
-    expect(
-      valueToLang(
-        "number[]",
-        "42",
-        "prefix_",
-        valueMapping,
-        (type, value) => `${type}[](${value})`,
-        (type, value) => `${type}(${value})`
-      )
-    ).toBe("prefix_int(42)");
+    expect(valueToLang(valueMapper, "boolean[]", "true", "prefix_")).toBe(
+      "prefix_bool(true)"
+    );
+    expect(valueToLang(valueMapper, "number[]", "42", "prefix_")).toBe(
+      "prefix_int(42)"
+    );
   });
 
   it("should throw error for unknown types", () => {
     expect(() =>
-      valueToLang(
-        "unknown",
-        "value",
-        "prefix_",
-        valueMapping,
-        (type, value) => `${type}[](${value})`,
-        (type, value) => `${type}(${value})`
-      )
+      valueToLang(valueMapper, "unknown", "value", "prefix_")
     ).toThrow("Unknown type: unknown");
   });
 });
@@ -172,7 +134,7 @@ describe("funcToLang", () => {
   };
 
   it("should generate function definition correctly", () => {
-    const result = funcToLang(interfaceType, functionType, special, bridge);
+    const result = bridgeToLang(interfaceType, functionType, special, bridge);
     expect(result).toContain("funcDef_wrapper_TestInterface_testFunction");
   });
 
@@ -184,7 +146,7 @@ describe("funcToLang", () => {
       returnOptional: false,
       throws: false,
     };
-    const result = funcToLang(
+    const result = bridgeToLang(
       interfaceType,
       specialFunctionType,
       special,
