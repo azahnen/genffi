@@ -5,10 +5,10 @@
     "rootDir": "./src" /* Specify the root folder within your source files. */,
     "outDir": "./build" /* Specify an output folder for all emitted files. */,
     "forceConsistentCasingInFileNames": true /* Ensure that casing is correct in imports. */,
-    "allowImportingTsExtensions": false /* Allow importing of .ts files even when they cannot be resolved. */,
+    "allowImportingTsExtensions": true /* Allow importing of .ts files even when they cannot be resolved. */,
     "resolveJsonModule": true,
     "sourceMap": true,
     "declaration": true,
-    "emitDeclarationOnly": false
+    "emitDeclarationOnly": true
   }
 }
