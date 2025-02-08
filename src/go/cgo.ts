@@ -308,7 +308,7 @@ const cgoToGoBridge: BridgeMapping = {
   wrapper: (iname: string, fname: string) =>
     `${firstLetterUpperCase(iname)}_${firstLetterUpperCase(fname)}`,
   wrapped: (iname: string, fname: string) => `${firstLetterUpperCase(fname)}`,
-  folded: (obj: string) => `folded.${obj}`,
+  folded: (obj: string) => `folded := ${obj}`,
   obj(type: string, handle: boolean, fold: boolean) {
     const name = this.typeToName(type);
     return handle ? `${name}_handles[handle]` : fold ? "folded" : name;

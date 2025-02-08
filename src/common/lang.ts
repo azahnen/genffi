@@ -115,11 +115,11 @@ export const valueToLang = (
     ? mapping[typ as Type](value)
     : toCustom(typ, value);
 
-  return type !== "void"
-    ? `${prefix}${mappedType}`
-    : isArray
-    ? toArray(mappedType, value)
-    : mappedType;
+  if (Object.hasOwn(mapping, typ)) {
+    return type === "void" ? mappedType : `${prefix}${mappedType}`;
+  }
+
+  return isArray ? toArray(typ, value) : `${prefix}${mappedType}`;
 };
 
 export const funcToLang = (
@@ -152,7 +152,7 @@ export const funcToLang = (
   } else {
     returnsNew.push(bridge.body3(f.returnType, obj, func, paramsOut));
   }
-  const returns = returnsNew.join("\n  ");
+  const returns = returnsNew.flat().join("\n  ");
 
   const returnType = bridge.return(
     f.returnType,

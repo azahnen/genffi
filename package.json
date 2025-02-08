@@ -21,8 +21,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p ./tsconfig.build.json",
-    "build2": "node --disable-warning=ExperimentalWarning --experimental-strip-types  ./scripts/build.ts",
+    "build2": "tsc -p ./tsconfig.build.json",
+    "build": "node --disable-warning=ExperimentalWarning --experimental-strip-types  ./scripts/build.ts",
     "clean": "rimraf build coverage",
     "type:check": "tsc --noEmit",
     "lint": "biome check . --write --unsafe",

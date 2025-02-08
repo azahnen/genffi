@@ -7,6 +7,8 @@ import { isMain } from "is-main";
 import { rimraf } from "rimraf";
 import packageJson from "../package.json" with { type: "json" };
 
+//TODO: move everything but esbuild to package.json, what is api-extractor, clean-plugin, etc
+
 const esbuildTarget = `node${packageJson.volta.node.slice(0, 2)}`;
 
 const execFile = promisify(execFileSync);
@@ -74,7 +76,8 @@ async function build(): Promise<void> {
 		bundle: true,
 		entryPoints: [path.join(srcPath, "index.ts")],
 		outdir: buildPath,
-		banner: { js: "import { createRequire } from 'module'; import { fileURLToPath } from 'url'; const require = createRequire(import.meta.url); const __filename = fileURLToPath(import.meta.url);" },
+		packages: "external",
+		//banner: { js: "import { createRequire } from 'module'; import { fileURLToPath } from 'url'; const require = createRequire(import.meta.url); const __filename = fileURLToPath(import.meta.url);" },
 	});
 
 	// biome-ignore lint/suspicious/noConsole: script file
