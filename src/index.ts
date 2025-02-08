@@ -5,6 +5,7 @@ import {
   generateGoModel,
   generateGoApi,
   generateCgoWrapper,
+  generateGoStubs,
 } from "./go/index.js";
 import { ClassGenerators, generateJava, Hooks } from "./java/index.js";
 import { generateJsValidators } from "./js/index.js";
@@ -48,7 +49,9 @@ export type GoCfg = GenLangCfg & {
   module: string;
   filePrefixes: Record<string, string>;
   model?: GoPkgCfg;
-  api?: GoApiCfg;
+  api?: GoPkgCfg;
+  impl?: GoPkgCfg;
+  cgo?: GoPkgCfg;
 };
 
 export type JavaCfg = GenLangCfg & {
@@ -138,12 +141,26 @@ export const generate = (cfg: Cfg) => {
 
       write(code, go.basePath, verbose);
 
-      if (go.api.cgo) {
+      if (go.cgo) {
         const code: Result = generateCgoWrapper(
           go.label || "Go CGO wrapper",
           api,
-          `${goPkgPrefix}${go.api.cgoPkg || "internal/clib"}`,
-          `${goPkgPrefix}${go.api.pkg || "api"}`,
+          `${goPkgPrefix}${go.cgo.pkg || "internal/clib"}`,
+          `${goPkgPrefix}${go.api?.pkg || "api"}`,
+          go.module,
+          [],
+          {}
+        );
+
+        write(code, go.basePath, verbose);
+      }
+
+      if (go.impl) {
+        const code: Result = generateGoStubs(
+          go.label || "Go implementation stubs",
+          api,
+          `${goPkgPrefix}${go.impl.pkg || "impl"}`,
+          `${goPkgPrefix}${go.api?.pkg || "api"}`,
           go.module,
           [],
           {}
