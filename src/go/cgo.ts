@@ -4,25 +4,22 @@ import {
   InterfaceType,
   StructType,
   VarType,
-} from "../common/api.js";
-import { Generator } from "../common/index.js";
-import { Result } from "../common/io.js";
+} from "../common/api.ts";
+import { typeToC } from "../common/c.ts";
+import { Generator } from "../common/index.ts";
+import { Result } from "../common/io.ts";
+import {
+  BridgeMapping,
+  typeToLang,
+  valueToLang,
+  funcToLang,
+  Special,
+} from "../common/lang.ts";
 import {
   firstLetterToLowerCase,
   firstLetterUpperCase,
-} from "../common/schema.js";
-import { generateFile } from "./shared.js";
-
-type Special = {
-  handle: string[];
-  fold: string[];
-  folded: {
-    [key: string]: {
-      params: string[];
-      returnType: string;
-    };
-  };
-};
+} from "../common/schema.ts";
+import { generateFile } from "./shared.ts";
 
 export const generateCgoWrapper = (
   name: string,
@@ -54,7 +51,7 @@ export const generateCgoWrapper = (
   return result;
 };
 
-const generateClib =
+export const generateClib =
   (
     api: ApiType,
     module: string,
@@ -120,6 +117,14 @@ ${api.structs.map(structMapper).join("\n")}
 
 //=== UTIL ===
 
+${util}
+    `;
+
+    return code;
+  };
+
+const util = `
+//TODO: replace with GoMapSlice
 func GoStringSlice(array **C.char, length int) []string {
 	slice := make([]string, 0, length)
 	for _, v := range unsafe.Slice(array, length) {
@@ -129,6 +134,7 @@ func GoStringSlice(array **C.char, length int) []string {
 }
 
 //TODO: free in c
+//TODO: replace with CMapSlice
 func CStringSlice(array []string) **C.char {
 	slice := make([]*C.char, 0, len(array))
 	for _, v := range array {
@@ -159,12 +165,9 @@ func CMapSlice[T, U any](source []T, f func(T) U) *U {
 	}
 	return &target[0]
 }
-      `;
+`;
 
-    return code;
-  };
-
-const intfaceToGo =
+export const intfaceToGo =
   (special: Special) =>
   (i: InterfaceType): string => {
     const funcs = i.functions.map((f) => funcToGo(i, f, special)).join("\n\n");
@@ -176,27 +179,27 @@ ${funcs}
 `;
   };
 
-const intfaceToVar = (i: InterfaceType): string => {
+export const intfaceToVar = (i: InterfaceType): string => {
   return `var ${firstLetterToLowerCase(i.name)} api.${i.name}`;
 };
 
-const intfaceToGetter = (i: InterfaceType): string => {
+export const intfaceToGetter = (i: InterfaceType): string => {
   return `${firstLetterUpperCase(i.name)}() api.${firstLetterUpperCase(
     i.name
   )}`;
 };
 
-const intfaceToInit = (i: InterfaceType): string => {
+export const intfaceToInit = (i: InterfaceType): string => {
   return `${firstLetterToLowerCase(i.name)} = init.${firstLetterUpperCase(
     i.name
   )}()`;
 };
 
-const intfaceToHandles = (i: InterfaceType): string => {
+export const intfaceToHandles = (i: InterfaceType): string => {
   return `var ${firstLetterToLowerCase(i.name)}_handles []api.${i.name}`;
 };
 
-const structMapper = (i: StructType): string => {
+export const structMapper = (i: StructType): string => {
   const propsGo = i.properties.map(propFromC).join(",\n  ");
   const propsC = i.properties
     .map((p) => (p.enum ? propFromGo(p) : propFromGoPointer(p)))
@@ -217,7 +220,7 @@ func C${i.name}(fromGo api.${i.name}) C.${i.name} {
 	`;
 };
 
-const enumMapper = (s: StructType): string => {
+export const enumMapper = (s: StructType): string => {
   const propsGo = s.properties
     .map((p, i) => `if *fromC == ${i} { return "${p.name}" }`)
     .join("\n  ");
@@ -241,29 +244,29 @@ func C${s.name}(fromGo api.${s.name}) C.${s.name} {
 	`;
 };
 
-const propFromC = (v: VarType): string => {
-  return `${firstLetterUpperCase(v.name)}: ${paramToGo(
+export const propFromC = (v: VarType): string => {
+  return `${firstLetterUpperCase(v.name)}: ${valueToGo(
     v.type,
     `fromC.${v.name}`
   )}`;
 };
 
-const propFromGo = (v: VarType): string => {
-  return `${v.name}: ${paramToC(
+export const propFromGo = (v: VarType): string => {
+  return `${v.name}: ${valueToCgoParam(
     v.type,
     `fromGo.${firstLetterUpperCase(v.name)}`
   )}`;
 };
 
-const propFromGoPointer = (v: VarType): string => {
-  return `${v.name}: ${paramToC(
+export const propFromGoPointer = (v: VarType): string => {
+  return `${v.name}: ${valueToCgoParam(
     v.type,
     `fromGo.${firstLetterUpperCase(v.name)}`,
     true
   )}`;
 };
 
-const structToC = (s: StructType): string => {
+export const structToC = (s: StructType): string => {
   const props = s.properties.map(propToC).join(";\n  ");
 
   return `
@@ -273,7 +276,7 @@ typedef struct ${s.name} {
 	`;
 };
 
-const enumToC = (s: StructType): string => {
+export const enumToC = (s: StructType): string => {
   const props = s.properties.map((p) => p.name).join(",\n  ");
 
   return `	  
@@ -283,7 +286,7 @@ typedef enum ${s.name} {
 		  `;
 };
 
-const propToC = (v: VarType): string => {
+export const propToC = (v: VarType): string => {
   const result = `${typeToC(v.type)} ${v.name}`;
 
   if (v.type.endsWith("[]")) {
@@ -293,40 +296,35 @@ const propToC = (v: VarType): string => {
   return result;
 };
 
-const funcToGo = (
-  i: InterfaceType,
-  f: FunctionType,
-  special: Special
-): string => {
-  const iface = firstLetterToLowerCase(i.name);
-  const func = firstLetterUpperCase(f.name);
-  const cfunc = `${firstLetterUpperCase(i.name)}_${firstLetterUpperCase(
-    f.name
-  )}`;
-  const fiface = firstLetterToLowerCase(f.returnType);
-  const paramHandle = i.handle ? ["handle int64"] : [];
-  const closer =
-    f.params.length === 1 &&
-    special.handle.includes(f.params[0].type) &&
-    f.returnType === "void";
-  const ciface = closer ? firstLetterToLowerCase(f.params[0].type) : "";
-  const paramsIn = closer
-    ? ["handle int64"]
-    : f.params.map((p) => `${p.name} ${typeToCgo(p.type)}`);
-  const paramsOut = closer
-    ? [`${ciface}_handles[handle]`]
-    : f.params.map((p) => paramToGo(p.type, p.name));
-  const obj = i.handle ? `${iface}_handles[handle]` : i.fold ? "folded" : iface;
-  const cleanup = closer ? `\n  ${ciface}_handles[handle] = nil` : "";
-
-  const returnsNew = [];
-
-  if (special.handle.includes(f.returnType)) {
-    returnsNew.push(
-      `${fiface}_handles = append(${fiface}_handles, ${obj}.${func}(${paramsOut}))`
-    );
-    returnsNew.push(`return int64(len(${fiface}_handles) - 1)`);
-  } else if (f.returnOptional || f.throws) {
+const cgoToGoBridge: BridgeMapping = {
+  handle: "handle int64",
+  closer: "void",
+  paramIn: (p: VarType) => `${p.name} ${typeToCgo(p.type)}`,
+  paramOut: (p: VarType) => valueToGo(p.type, p.name),
+  handles: (type: string) => `${type}_handles`,
+  handleValue: (type: string) => `${type}_handles[handle]`,
+  typeToName: (type: string) => firstLetterToLowerCase(type),
+  cleanup: (handle: string) => `\n  ${handle} = nil`,
+  wrapper: (iname: string, fname: string) =>
+    `${firstLetterUpperCase(iname)}_${firstLetterUpperCase(fname)}`,
+  wrapped: (iname: string, fname: string) => `${firstLetterUpperCase(fname)}`,
+  folded: (obj: string) => `folded.${obj}`,
+  obj(type: string, handle: boolean, fold: boolean) {
+    const name = this.typeToName(type);
+    return handle ? `${name}_handles[handle]` : fold ? "folded" : name;
+  },
+  call: (obj: string, func: string, params: string[]) =>
+    `${obj}.${func}(${params})`,
+  body1(handleType: string, obj: string, func: string, params: string[]) {
+    const handleName = this.typeToName(handleType);
+    const handle = this.call(obj, func, params);
+    return [
+      `${handleName}_handles = append(${handleName}_handles, ${handle})`,
+      `return int64(len(${handleName}_handles) - 1)`,
+    ];
+  },
+  body2(f: FunctionType, obj: string, func: string, params: string[]) {
+    const returnsNew = [];
     const vars = [];
     if (f.returnType !== "void") {
       vars.push("result");
@@ -338,7 +336,8 @@ const funcToGo = (
       vars.push("err");
     }
 
-    returnsNew.push(`${vars.join(", ")} := ${obj}.${func}(${paramsOut})`);
+    const handle = this.call(obj, func, params);
+    returnsNew.push(`${vars.join(", ")} := ${handle}`);
 
     if (f.returnOptional) {
       returnsNew.push(`if ok { *cok = 1 }`);
@@ -347,232 +346,109 @@ const funcToGo = (
       returnsNew.push(`if err != nil { *cerr = C.CString(err.Error()) }`);
     }
     if (f.returnType !== "void") {
-      returnsNew.push(returnToC(f.returnType, "result"));
+      returnsNew.push(valueToCgoReturn(f.returnType, "result"));
     }
-  } else {
-    returnsNew.push(returnToC(f.returnType, `${obj}.${func}(${paramsOut})`));
-  }
-  const returns = returnsNew.join("\n  ");
-
-  const returnType = special.handle.includes(f.returnType)
-    ? `int64`
-    : special.fold.includes(f.returnType)
-    ? `api.${f.returnType}`
-    : typeToCgo(f.returnType);
-  const paramsFolded = i.fold ? special.folded[i.name].params : [];
-  const folded = i.fold ? `${special.folded[i.name].returnType}\n` : "";
-
-  const newParams = [];
-  if (f.returnOptional) {
-    newParams.push("cok *C.short");
-  }
-  if (f.throws) {
-    newParams.push("cerr **C.char");
-  }
-
-  if (special.fold.includes(f.returnType)) {
-    const multi = Object.hasOwn(special.folded, i.name);
-    const params = multi ? special.folded[i.name].params : paramHandle;
-    const ret = multi
-      ? special.folded[i.name].returnType + "."
-      : `folded := ${obj}.`;
-
-    special.folded[f.returnType] = {
-      params: [...params, ...paramsIn],
-      returnType: `${ret}${func}(${paramsOut})`,
-    };
-    return "";
-  }
-
-  const allParams = [
-    ...paramsFolded,
-    ...paramHandle,
-    ...paramsIn,
-    ...newParams,
-  ].join(", ");
-
-  return `//export ${cfunc}
-func ${cfunc}(${allParams}) ${returnType} {
-	${folded}${returns}${cleanup}
-}`;
+    return returnsNew;
+  },
+  body3(handleType: string, obj: string, func: string, params: string[]) {
+    return [valueToCgoReturn(handleType, this.call(obj, func, params))];
+  },
+  paramRet: (f: FunctionType) => {
+    const newParams = [];
+    if (f.returnOptional) {
+      newParams.push("cok *C.short");
+    }
+    if (f.throws) {
+      newParams.push("cerr **C.char");
+    }
+    return newParams;
+  },
+  return: (type: string, handle: boolean, fold: boolean) =>
+    handle ? `int64` : fold ? `api.${type}` : typeToCgo(type),
+  funcDef: (
+    name: string,
+    params: string,
+    returns: string,
+    body: string
+  ) => `//export ${name}
+	func ${name}(${params}) ${returns} {
+		${body}
+	}`,
 };
 
-const paramToGo = (type: string, name: string): string => {
-  if (type === "boolean") {
-    return `bool(${name} == 1)`;
-  }
-  if (type === "number") {
-    return `float64(${name})`;
-  }
-  if (type === "bigint") {
-    return `int64(${name})`;
-  }
-  if (type === "string") {
-    return `C.GoString(${name})`;
-  }
-  if (type === "string[]") {
-    return `GoStringSlice(${name}, int(${name}_length))`;
-  }
-  if (type === "Uint8Array") {
-    return `C.GoBytes(unsafe.Pointer(${name}), C.int(C.strlen(${name})))`;
-  }
+export const funcToGo = (
+  i: InterfaceType,
+  f: FunctionType,
+  special: Special
+): string => funcToLang(i, f, special, cgoToGoBridge);
 
-  if (type.startsWith("[")) {
-    throw new Error(`Tuples not supported: ${type}`);
-  }
-  if (type[0] === type[0].toLowerCase()) {
-    throw new Error(`Unknown type: ${type}`);
-  }
-
-  if (type.endsWith("[]")) {
-    return `GoMapSlice(${name}, int(${name}_length), Go${type.substring(
-      0,
-      type.length - 2
-    )})`;
+export const valueToGo = (type: string, value: string): string => {
+  return valueToLang(
+    type,
+    value,
+    "",
+    {
+      boolean: (value) => `bool(${value} == 1)`,
+      number: (value) => `float64(${value})`,
+      bigint: (value) => `int64(${value})`,
+      string: (value) => `C.GoString(${value})`,
+      Uint8Array: (value) =>
+        `C.GoBytes(unsafe.Pointer(${value}), C.int(C.strlen(${value})))`,
+      void: (value) => value,
+    },
+    (type: string, value: string) =>
+      `GoMapSlice(${value}, int(${value}_length), Go${type})`,
     //return `[]api.${type.substring(0, type.length - 2)}{} /*TODO*/`;
-  }
-
-  return `Go${type}(&${name})`;
+    (type: string, value: string) => `Go${type}(&${value})`
+  );
 };
 
-const paramToC = (type: string, value: string, pointer?: boolean): string => {
-  if (type === "boolean") {
-    return `CBool(${value})`;
-  }
-  if (type === "number") {
-    return `C.double(${value})`;
-  }
-  if (type === "bigint") {
-    return `C.longlong(${value})`;
-  }
-  if (type === "string") {
-    return `C.CString(${value})`;
-  }
-  if (type === "string[]") {
-    return `CStringSlice(${value})`;
-  }
-  if (type === "Uint8Array") {
-    return `(*C.char)(C.CBytes(${value}))`;
-  }
-  if (type === "void") {
-    return value;
-  }
+export const valueToCgoParam = (
+  type: string,
+  value: string,
+  pointer?: boolean
+): string => valueToCgo(type, value, "", pointer);
 
-  if (type.startsWith("[")) {
-    throw new Error(`Tuples not supported: ${type}`);
-  }
-  if (type[0] === type[0].toLowerCase()) {
-    throw new Error(`Unknown type: ${type}`);
-  }
+export const valueToCgoReturn = (type: string, value: string): string =>
+  valueToCgo(type, value, "return ");
 
-  if (type.endsWith("[]")) {
-    return `CMapSlice(${value}, C${type.substring(0, type.length - 2)})`;
-  }
-
-  return `${pointer ? "&" : ""}C${type}(${value})`;
+export const valueToCgo = (
+  type: string,
+  value: string,
+  prefix: string,
+  pointer?: boolean
+): string => {
+  return valueToLang(
+    type,
+    value,
+    prefix,
+    {
+      boolean: (value) => `CBool(${value})`,
+      number: (value) => `C.double(${value})`,
+      bigint: (value) => `C.longlong(${value})`,
+      string: (value) => `C.CString(${value})`,
+      Uint8Array: (value) => `(*C.char)(C.CBytes(${value}))`,
+      void: (value) => value,
+    },
+    (type: string, value: string) => `CMapSlice(${value}, C${type})`,
+    (type: string, value: string) => `${pointer ? "&" : ""}C${type}(${value})`
+  );
 };
 
-const returnToC = (type: string, value: string): string => {
-  if (type === "boolean") {
-    return `return CBool(${value})`;
-  }
-  if (type === "number") {
-    return `return C.double(${value})`;
-  }
-  if (type === "bigint") {
-    return `return C.longlong(${value})`;
-  }
-  if (type === "string") {
-    return `return C.CString(${value})`;
-  }
-  if (type === "string[]") {
-    return "TODO";
-  }
-  if (type === "Uint8Array") {
-    return `return (*C.char)(C.CBytes(${value}))`;
-  }
-  if (type === "void") {
-    return value;
-  }
-
-  if (type.startsWith("[")) {
-    throw new Error(`Tuples not supported: ${type}`);
-  }
-  if (type[0] === type[0].toLowerCase()) {
-    throw new Error(`Unknown type: ${type}`);
-  }
-
-  return `return C${type}(${value})`;
-};
-
-const typeToCgo = (type: string): string => {
-  if (type === "boolean") {
-    return "C.short";
-  }
-  if (type === "number") {
-    return "C.double";
-  }
-  if (type === "bigint") {
-    return "C.longlong";
-  }
-  if (type === "string") {
-    return "*C.char";
-  }
-  if (type === "string[]") {
-    return "**C.char";
-  }
-  if (type === "Uint8Array") {
-    return "*C.char";
-  }
-  if (type === "void") {
-    return "";
-  }
-
-  if (type.startsWith("[")) {
-    throw new Error(`Tuples not supported: ${type}`);
-  }
-  if (type[0] === type[0].toLowerCase()) {
-    throw new Error(`Unknown type: ${type}`);
-  }
-
-  return `C.${type}`;
-};
-
-const typeToC = (type: string): string => {
-  if (type === "boolean") {
-    return "short";
-  }
-  if (type === "number") {
-    return "double";
-  }
-  if (type === "bigint") {
-    return "longlong";
-  }
-  if (type === "string") {
-    return "char*";
-  }
-  if (type === "string[]") {
-    return "char**";
-  }
-  if (type === "Uint8Array") {
-    return "char*";
-  }
-  if (type === "void") {
-    return "";
-  }
-
-  if (type.startsWith("[")) {
-    throw new Error(`Tuples not supported: ${type}`);
-  }
-  if (type[0] === type[0].toLowerCase()) {
-    throw new Error(`Unknown type: ${type}`);
-  }
-
-  if (type.endsWith("[]")) {
-    return `${type.substring(0, type.length - 2)}*`;
-  }
-
-  return type;
+export const typeToCgo = (type: string): string => {
+  return typeToLang(
+    type,
+    {
+      boolean: "C.short",
+      number: "C.double",
+      bigint: "C.longlong",
+      string: "*C.char",
+      Uint8Array: "*C.char",
+      void: "",
+    },
+    (type: string) => `*${type}`,
+    (type: string) => `C.${type}`
+  );
 };
 
 // return byte array: https://stackoverflow.com/questions/70531497/how-to-return-a-byte-slice-in-go-to-c

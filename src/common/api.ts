@@ -1,7 +1,7 @@
 import * as TJS from "typescript-json-schema";
 import * as ts from "typescript";
 
-export type VarType = { name: string; type: string; enum: boolean };
+export type VarType = { name: string; type: string; enum?: boolean };
 
 export type FunctionType = {
   name: string;
