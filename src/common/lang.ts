@@ -1,16 +1,14 @@
-import { FunctionType, InterfaceType, VarType } from "./api.ts";
+import {
+  BasicType,
+  FunctionType,
+  InterfaceType,
+  Type,
+  VarType,
+} from "./api.ts";
 
-export type Type =
-  | "boolean"
-  | "number"
-  | "bigint"
-  | "string"
-  | "Uint8Array"
-  | "void";
+export type TypeMapping = Record<BasicType, string>;
 
-export type TypeMapping = Record<Type, string>;
-
-export type ValueMapping = Record<Type, (value: string) => string>;
+export type ValueMapping = Record<BasicType, (value: string) => string>;
 
 export type TypeMapper = TypeMapping & {
   toArray: (type: string) => string;
@@ -22,7 +20,7 @@ export type ValueMapper = ValueMapping & {
   toCustom?: (type: string, value: string) => string;
 };
 export type LangMapper = {
-  type: (type: string) => string;
+  type: (type: string, apiPkg?: string) => string;
   value: (
     type: string,
     value: string,
@@ -30,6 +28,7 @@ export type LangMapper = {
     pointer?: boolean
   ) => string;
   isCustom: (type: string) => boolean;
+  isArray: (type: string) => boolean;
   bridge: (i: InterfaceType, f: FunctionType, special: Special) => string;
 };
 
@@ -37,21 +36,28 @@ export const langMapper = (
   typeMapper: TypeMapper,
   valueMapper: ValueMapper,
   bridgeMapping?: BridgeMapping
-): LangMapper => ({
-  type: (type: string) => typeToLang(type, typeMapper),
-  value: (type: string, value: string, prefix = "") =>
-    valueToLang(valueMapper, type, value, prefix),
-  isCustom: (type: string) =>
+): LangMapper => {
+  const isCustom = (type: string) =>
     !Object.hasOwn(typeMapper, type) &&
     type[0] === type[0].toUpperCase() &&
-    !type.startsWith("["),
-  bridge: (i: InterfaceType, f: FunctionType, special: Special) => {
-    if (!bridgeMapping) {
-      throw new Error("Bridge mapping not provided");
-    }
-    return bridgeToLang(i, f, special, bridgeMapping);
-  },
-});
+    !type.startsWith("[");
+
+  return {
+    type: (type: string, apiPkg?: string) =>
+      (apiPkg && isCustom(type) ? `${apiPkg}.` : "") +
+      typeToLang(type, typeMapper),
+    value: (type: string, value: string, prefix = "") =>
+      valueToLang(valueMapper, type, value, prefix),
+    isCustom,
+    isArray: (type: string) => type.endsWith("[]"),
+    bridge: (i: InterfaceType, f: FunctionType, special: Special) => {
+      if (!bridgeMapping) {
+        throw new Error("Bridge mapping not provided");
+      }
+      return bridgeToLang(i, f, special, bridgeMapping);
+    },
+  };
+};
 
 export type Special = {
   handle: string[];
@@ -124,7 +130,7 @@ export const typeToLang = (
   }
 
   const mappedType = Object.hasOwn(mapping, typ)
-    ? mapping[typ as Type]
+    ? mapping[typ as BasicType]
     : toCustom(typ);
 
   return isArray ? toArray(mappedType) : mappedType;
@@ -153,7 +159,7 @@ export const valueToLang = (
   }
 
   const mappedType = Object.hasOwn(mapping, typ)
-    ? mapping[typ as Type](value)
+    ? mapping[typ as BasicType](value)
     : toCustom(typ, value);
 
   if (Object.hasOwn(mapping, typ)) {

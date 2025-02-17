@@ -19,7 +19,7 @@ import {
   firstLetterToLowerCase,
   firstLetterUpperCase,
 } from "../common/schema.ts";
-import { generateFile } from "./shared.ts";
+import { funcHeader, funcHeaderPkg, generateFile } from "./shared.ts";
 
 export const generateGoStubs = (
   name: string,
@@ -63,7 +63,7 @@ export const generateStubs =
   (name: string, pkg: string): string => {
     let code = `package ${pkg}
 		
-import "fmt"
+//import "fmt"
 import api "${module}/${pkgApi}"
 
 ${api.interfaces.map(intfaceToGo(special)).join("\n")}
@@ -73,8 +73,6 @@ ${api.interfaces.map(intfaceToGo(special)).join("\n")}
     return code;
   };
 
-//TODO: detect opener/closer functions?
-//TODO: detect that Store is also an interface and has constructor?
 export const intfaceToGo =
   (special: Special) =>
   (i: InterfaceType): string => {
@@ -89,21 +87,21 @@ type ${i.name} struct {
 func New${i.name}() *${i.name} {
 	return &${i.name}{}
 }
-
-func (s *${i.name}) Open(cfg api.StoreCfg) api.Store {
-	return NewStore(cfg)
-}
-
-// Close implements api.Stores.
-func (s *${i.name}) Close(store api.Store) {
-}
 	
-	${funcs}
+${funcs}
 	`;
   };
 
-export const funcToGo = (
+const funcToGo = (
   i: InterfaceType,
   f: FunctionType,
   special: Special
-): string => "";
+): string => {
+  const header = funcHeaderPkg(f, "api");
+
+  return `
+func (s *${i.name}) ${header} {
+    panic("not implemented yet")
+}
+	`;
+};

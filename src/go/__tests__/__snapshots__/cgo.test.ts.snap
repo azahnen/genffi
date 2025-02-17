@@ -1,0 +1,386 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`generateCgoWrapper2 handle and fold 1`] = `
+{
+  "files": [
+    {
+      "content": "package main  
+
+/*
+#include <string.h>
+	  
+typedef enum SourceType {
+  FS,
+  GIT,
+  S3,
+  HTTP
+} SourceType;
+		  
+	  
+typedef enum ContentType {
+  BLOBS,
+  CONFIGS
+} ContentType;
+		  
+
+typedef struct StoreCfg {
+  StoreSource* sources; size_t sources_length;
+} StoreCfg;
+	
+
+typedef struct StoreSource {
+  char* src;
+  SourceType typ;
+  ContentType content;
+} StoreSource;
+	
+
+typedef struct StoreStatus {
+  short ready;
+  double progress;
+} StoreStatus;
+	
+*/
+import "C"
+import "fmt"
+import "unsafe"
+import api "foo/api"
+import clib "foo/test"
+
+func main() {}
+
+//=== INIT ===
+
+var stores api.Stores
+	
+
+var store_handles []api.Store
+
+type cInit interface {
+	Stores() api.Stores
+}
+
+//export InitLibrary
+func InitLibrary() {
+	var init cInit = clib.NewInit()
+
+	stores = init.Stores()
+}
+
+
+//=== Stores ===
+
+//export Stores_Open
+	func Stores_Open(cfg C.StoreCfg) int64 {
+		store_handles = append(store_handles, stores.Open(GoStoreCfg(&cfg)))
+  return int64(len(store_handles) - 1)
+	}
+
+//export Stores_Close
+	func Stores_Close(handle int64)  {
+		stores.Close(store_handles[handle])
+  store_handles[handle] = nil
+	}
+
+
+//=== Store ===
+
+//export Store_Config
+	func Store_Config(handle int64) C.StoreCfg {
+		return CStoreCfg(store_handles[handle].Config())
+	}
+
+//export Store_Status
+	func Store_Status(handle int64) C.StoreStatus {
+		return CStoreStatus(store_handles[handle].Status())
+	}
+
+
+
+
+//=== BlobReader ===
+
+//export BlobReader_Path
+	func BlobReader_Path(handle int64, basePath *C.char) *C.char {
+		folded := store_handles[handle].BlobReader(C.GoString(basePath))
+return C.CString(folded.Path())
+	}
+
+
+
+//export BlobReader_SyncBlobsToFs
+	func BlobReader_SyncBlobsToFs(handle int64, basePath *C.char, path *C.char, cerr **C.char) *C.char {
+		folded := store_handles[handle].BlobReader(C.GoString(basePath))
+result, err := folded.SyncBlobsToFs(C.GoString(path))
+  if err != nil { *cerr = C.CString(err.Error()) }
+  return C.CString(result)
+	}
+
+
+//=== ReadOnlyBlob ===
+
+//export ReadOnlyBlob_Path
+	func ReadOnlyBlob_Path(handle int64, basePath *C.char, path *C.char) *C.char {
+		folded := store_handles[handle].BlobReader(C.GoString(basePath)).ReadOnlyBlob(C.GoString(path))
+return C.CString(folded.Path())
+	}
+
+//export ReadOnlyBlob_Exists
+	func ReadOnlyBlob_Exists(handle int64, basePath *C.char, path *C.char) C.short {
+		folded := store_handles[handle].BlobReader(C.GoString(basePath)).ReadOnlyBlob(C.GoString(path))
+return CBool(folded.Exists())
+	}
+
+//export ReadOnlyBlob_Size
+	func ReadOnlyBlob_Size(handle int64, basePath *C.char, path *C.char, cok *C.short) C.longlong {
+		folded := store_handles[handle].BlobReader(C.GoString(basePath)).ReadOnlyBlob(C.GoString(path))
+result, ok := folded.Size()
+  if ok { *cok = 1 }
+  return C.longlong(result)
+	}
+
+
+//=== ENUMS ===
+
+
+func GoSourceType(fromC *C.SourceType) api.SourceType {
+  if *fromC == 0 { return "FS" }
+  if *fromC == 1 { return "GIT" }
+  if *fromC == 2 { return "S3" }
+  if *fromC == 3 { return "HTTP" }
+
+  panic(fmt.Sprintf("Unknown ordinal for SourceType: %d", *fromC))
+}
+
+func CSourceType(fromGo api.SourceType) C.SourceType {
+  if fromGo == "FS" { return 0 }
+  if fromGo == "GIT" { return 1 }
+  if fromGo == "S3" { return 2 }
+  if fromGo == "HTTP" { return 3 }
+
+  panic(fmt.Sprintf("Unknown value for SourceType: %s", fromGo))
+}
+	
+
+func GoContentType(fromC *C.ContentType) api.ContentType {
+  if *fromC == 0 { return "BLOBS" }
+  if *fromC == 1 { return "CONFIGS" }
+
+  panic(fmt.Sprintf("Unknown ordinal for ContentType: %d", *fromC))
+}
+
+func CContentType(fromGo api.ContentType) C.ContentType {
+  if fromGo == "BLOBS" { return 0 }
+  if fromGo == "CONFIGS" { return 1 }
+
+  panic(fmt.Sprintf("Unknown value for ContentType: %s", fromGo))
+}
+	
+
+//=== STRUCTS ===
+
+
+func GoStoreCfg(fromC *C.StoreCfg) api.StoreCfg {
+	return api.StoreCfg{
+		Sources: GoMapSlice(fromC.sources, int(fromC.sources_length), GoStoreSource),
+	}
+}
+
+func CStoreCfg(fromGo api.StoreCfg) C.StoreCfg {
+	return C.StoreCfg{
+		sources: CMapSlice(fromGo.Sources, CStoreSource),
+	}
+}
+	
+
+func GoStoreSource(fromC *C.StoreSource) api.StoreSource {
+	return api.StoreSource{
+		Src: C.GoString(fromC.src),
+  Typ: GoSourceType(&fromC.typ),
+  Content: GoContentType(&fromC.content),
+	}
+}
+
+func CStoreSource(fromGo api.StoreSource) C.StoreSource {
+	return C.StoreSource{
+		src: C.CString(fromGo.Src),
+  typ: &CSourceType(fromGo.Typ),
+  content: &CContentType(fromGo.Content),
+	}
+}
+	
+
+func GoStoreStatus(fromC *C.StoreStatus) api.StoreStatus {
+	return api.StoreStatus{
+		Ready: bool(fromC.ready == 1),
+  Progress: float64(fromC.progress),
+	}
+}
+
+func CStoreStatus(fromGo api.StoreStatus) C.StoreStatus {
+	return C.StoreStatus{
+		ready: CBool(fromGo.Ready),
+  progress: C.double(fromGo.Progress),
+	}
+}
+	
+
+//=== UTIL ===
+
+
+//TODO: replace with GoMapSlice
+func GoStringSlice(array **C.char, length int) []string {
+	slice := make([]string, 0, length)
+	for _, v := range unsafe.Slice(array, length) {
+		slice = append(slice, C.GoString(v))
+	}
+	return slice
+}
+
+//TODO: free in c
+//TODO: replace with CMapSlice
+func CStringSlice(array []string) **C.char {
+	slice := make([]*C.char, 0, len(array))
+	for _, v := range array {
+		slice = append(slice, C.CString(v))
+	}
+	return &slice[0]
+}
+      
+func CBool(flag bool) C.short {
+	if flag {
+		return C.short(1)
+	}
+	return C.short(0)
+}
+
+func GoMapSlice[T, U any](source *T, length int, f func(*T) U) []U {
+	target := make([]U, 0, length)
+	for _, t := range unsafe.Slice(source, length) {
+		target = append(target, f(&t))
+	}
+	return target
+}
+
+func CMapSlice[T, U any](source []T, f func(T) U) *U {
+	target := make([]U, 0, len(source))
+	for _, t := range source {
+		target = append(target, f(t))
+	}
+	return &target[0]
+}
+
+    ",
+      "path": "test/main/clib.go",
+    },
+  ],
+  "name": "handle and fold",
+}
+`;
+
+exports[`generateCgoWrapper2 simple command handler 1`] = `
+{
+  "files": [
+    {
+      "content": "package main  
+
+/*
+#include <string.h>
+
+
+*/
+import "C"
+import "fmt"
+import "unsafe"
+import api "foo/api"
+import clib "foo/test"
+
+func main() {}
+
+//=== INIT ===
+
+var commandHandler api.CommandHandler
+	
+
+
+
+type cInit interface {
+	CommandHandler() api.CommandHandler
+}
+
+//export InitLibrary
+func InitLibrary() {
+	var init cInit = clib.NewInit()
+
+	commandHandler = init.CommandHandler()
+}
+
+
+//=== CommandHandler ===
+
+//export CommandHandler_Execute
+	func CommandHandler_Execute(command *C.char) *C.char {
+		return (*C.char)(C.CBytes(commandHandler.Execute(C.GoBytes(unsafe.Pointer(command), C.int(C.strlen(command))))))
+	}
+
+
+//=== ENUMS ===
+
+
+
+//=== STRUCTS ===
+
+
+
+//=== UTIL ===
+
+
+//TODO: replace with GoMapSlice
+func GoStringSlice(array **C.char, length int) []string {
+	slice := make([]string, 0, length)
+	for _, v := range unsafe.Slice(array, length) {
+		slice = append(slice, C.GoString(v))
+	}
+	return slice
+}
+
+//TODO: free in c
+//TODO: replace with CMapSlice
+func CStringSlice(array []string) **C.char {
+	slice := make([]*C.char, 0, len(array))
+	for _, v := range array {
+		slice = append(slice, C.CString(v))
+	}
+	return &slice[0]
+}
+      
+func CBool(flag bool) C.short {
+	if flag {
+		return C.short(1)
+	}
+	return C.short(0)
+}
+
+func GoMapSlice[T, U any](source *T, length int, f func(*T) U) []U {
+	target := make([]U, 0, length)
+	for _, t := range unsafe.Slice(source, length) {
+		target = append(target, f(&t))
+	}
+	return target
+}
+
+func CMapSlice[T, U any](source []T, f func(T) U) *U {
+	target := make([]U, 0, len(source))
+	for _, t := range source {
+		target = append(target, f(t))
+	}
+	return &target[0]
+}
+
+    ",
+      "path": "test/main/clib.go",
+    },
+  ],
+  "name": "simple command handler",
+}
+`;

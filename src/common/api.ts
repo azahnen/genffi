@@ -1,12 +1,26 @@
 import * as TJS from "typescript-json-schema";
 import * as ts from "typescript";
 
-export type VarType = { name: string; type: string; enum?: boolean };
+export type BasicType =
+  | "boolean"
+  | "number"
+  | "bigint"
+  | "string"
+  | "Uint8Array"
+  | "void";
+
+export type BasicArrayType = "boolean[]" | "number[]" | "bigint[]" | "string[]";
+
+export type CustomType = Capitalize<string>;
+
+export type Type = BasicType | BasicArrayType | CustomType;
+
+export type VarType = { name: string; type: Type; enum?: boolean };
 
 export type FunctionType = {
   name: string;
   params: VarType[];
-  returnType: string;
+  returnType: Type;
   returnOptional: boolean;
   throws: boolean;
 };
@@ -101,7 +115,7 @@ const analyze = (program: ts.Program): ApiType => {
 
             return {
               name: prop.getName(),
-              type: propTypeName,
+              type: propTypeName as Type,
               //TODO: multiple inspect runs, enums first
               enum: enums.find((e) => e.name === propTypeName) !== undefined,
             };
@@ -206,12 +220,12 @@ const parseFunction = (
               .map((p) => p.trim());
             return {
               name,
-              type,
+              type: type as Type,
               //TODO: multiple inspect runs, enums first
               enum: enums.find((e) => e.name === name) !== undefined,
             };
           });
-    const returnType = match[2];
+    const returnType = match[2] as Type;
 
     const throws = docTags.some((tag) => tag.name === "throws");
     const returnOptional = docTags.some((tag) => tag.name === "optional");

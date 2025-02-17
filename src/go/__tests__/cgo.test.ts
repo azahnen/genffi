@@ -27,6 +27,24 @@ import {
   VarType,
   FunctionType,
 } from "../../common/api.ts";
+import { fixtures } from "../../__tests__/fixtures.ts";
+
+describe("generateCgoWrapper2", () => {
+  for (const fixture of fixtures) {
+    it(fixture.name, () => {
+      const result = generateCgoWrapper(
+        fixture.name,
+        fixture.api,
+        "test",
+        "api",
+        "foo",
+        []
+      );
+
+      expect(result).toMatchSnapshot();
+    });
+  }
+});
 
 const mockApi: ApiType = {
   interfaces: [

@@ -107,6 +107,9 @@ describe("valueToLang", () => {
     expect(valueToLang(valueMapper, "number[]", "42", "prefix_")).toBe(
       "prefix_int(42)"
     );
+    expect(valueToLang(valueMapper, "CustomType[]", "Custom", "prefix_")).toBe(
+      "CustomType[](Custom)"
+    );
   });
 
   it("should throw error for unknown types", () => {
@@ -142,7 +145,7 @@ describe("funcToLang", () => {
     const specialFunctionType: FunctionType = {
       name: "specialFunction",
       params: [{ name: "hand", type: "HandleType" }],
-      returnType: "closer",
+      returnType: "Closer",
       returnOptional: false,
       throws: false,
     };

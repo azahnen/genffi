@@ -4,12 +4,12 @@ import {
   InterfaceType,
   StructType,
   VarType,
-} from "../common/api.js";
-import { Generator } from "../common/index.js";
-import { Result } from "../common/io.js";
-import { firstLetterUpperCase } from "../common/schema.js";
+} from "../common/api.ts";
+import { Generator } from "../common/index.ts";
+import { Result } from "../common/io.ts";
+import { firstLetterUpperCase } from "../common/schema.ts";
 import { go } from "./lang.ts";
-import { generateFile } from "./shared.js";
+import { funcHeader, generateFile } from "./shared.ts";
 
 export const generateGoApi = (
   name: string,
@@ -43,7 +43,7 @@ ${api.interfaces.map(intfaceToGo).join("\n")}
   };
 
 const intfaceToGo = (i: InterfaceType): string => {
-  const funcs = i.functions.map(funcToGo).join("\n  ");
+  const funcs = i.functions.map(funcHeader).join("\n  ");
 
   return `
 type ${i.name} interface {
@@ -83,25 +83,4 @@ const (
 
 const propToGo = (v: VarType): string => {
   return `${firstLetterUpperCase(v.name)} ${go.type(v.type)}`;
-};
-
-const funcToGo = (f: FunctionType): string => {
-  const params = f.params.map((p) => `${p.name} ${go.type(p.type)}`).join(", ");
-
-  const ret = [];
-
-  if (f.returnType !== "void") {
-    ret.push(go.type(f.returnType));
-  }
-  if (f.returnOptional) {
-    ret.push("bool");
-  }
-  if (f.throws) {
-    ret.push("error");
-  }
-
-  const ret2 =
-    ret.length > 1 ? `(${ret.join(", ")})` : ret.length == 1 ? ret[0] : "";
-
-  return `${firstLetterUpperCase(f.name)}(${params}) ${ret2}`;
 };

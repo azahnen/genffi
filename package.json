@@ -28,6 +28,7 @@
     "lint": "biome check . --write --unsafe",
     "lint:check": "biome ci .",
     "test": "jest --coverage",
+    "snap": "jest --updateSnapshot",
     "test2": "node --disable-warning=ExperimentalWarning --experimental-strip-types ./scripts/test.ts test",
     "test:watch": "node --disable-warning=ExperimentalWarning --experimental-strip-types ./scripts/test.ts test:watch",
     "test:coverage": "node --disable-warning=ExperimentalWarning --experimental-strip-types ./scripts/test.ts test:coverage",

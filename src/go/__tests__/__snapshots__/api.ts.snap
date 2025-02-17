@@ -1,0 +1,103 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`generateGoApi handle and fold 1`] = `
+{
+  "files": [
+    {
+      "content": "package test  
+
+
+type SourceType string
+	
+const (
+	SourceTypeFS SourceType = "FS"
+  SourceTypeGIT SourceType = "GIT"
+  SourceTypeS3 SourceType = "S3"
+  SourceTypeHTTP SourceType = "HTTP"
+)
+		
+
+type ContentType string
+	
+const (
+	ContentTypeBLOBS ContentType = "BLOBS"
+  ContentTypeCONFIGS ContentType = "CONFIGS"
+)
+		
+
+
+type StoreCfg struct {
+  Sources []StoreSource
+}
+  
+
+type StoreSource struct {
+  Src string
+  Typ SourceType
+  Content ContentType
+}
+  
+
+type StoreStatus struct {
+  Ready bool
+  Progress float64
+}
+  
+
+
+type Stores interface {
+  Open(cfg StoreCfg) Store
+  Close(store Store) 
+}
+
+
+type Store interface {
+  Config() StoreCfg
+  Status() StoreStatus
+  BlobReader(basePath string) BlobReader
+}
+
+
+type BlobReader interface {
+  Path() string
+  ReadOnlyBlob(path string) ReadOnlyBlob
+  SyncBlobsToFs(path string) (string, error)
+}
+
+
+type ReadOnlyBlob interface {
+  Path() string
+  Exists() bool
+  Size() (int64, bool)
+}
+
+      ",
+      "path": "test/gen.go",
+    },
+  ],
+  "name": "handle and fold",
+}
+`;
+
+exports[`generateGoApi simple command handler 1`] = `
+{
+  "files": [
+    {
+      "content": "package test  
+
+
+
+
+
+
+type CommandHandler interface {
+  Execute(command []byte) []byte
+}
+
+      ",
+      "path": "test/gen.go",
+    },
+  ],
+  "name": "simple command handler",
+}
+`;

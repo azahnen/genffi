@@ -401,7 +401,8 @@ export const valueToCgo = (
   pointer?: boolean
 ): string => {
   return (
-    (pointer && cgo.isCustom(type) ? "&" : "") + cgo.value(type, value, prefix)
+    (pointer && cgo.isCustom(type) && !cgo.isArray(type) ? "&" : "") +
+    cgo.value(type, value, prefix)
   );
 };
 
